@@ -1,0 +1,21 @@
+{
+  "name": "commitment",
+  "version": "1.0.0",
+  "description": "ETG Commitment Project - Deployed by Proto",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jamil-007/commitment.git"
+  },
+  "author": "Proto (ETG Bot)",
+  "license": "MIT"
+}
