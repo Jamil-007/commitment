@@ -546,33 +546,46 @@ function NewGoalModal({ currentUser, onClose, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    console.log('🚀 [FRONTEND] Form submitted')
     setError('')
     
     if (!title.trim()) {
+      console.log('❌ [FRONTEND] Empty title')
       setError('Please enter a goal title')
       return
     }
 
+    console.log('🔄 [FRONTEND] Setting loading state...')
     setLoading(true)
     
     try {
+      const payload = {
+        title: title.trim(),
+        type,
+        proposedBy: currentUser,
+        deadline: deadline || null
+      }
+      console.log('📤 [FRONTEND] Sending request:', payload)
+      
       const response = await fetch('/api/goals/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
-          type,
-          proposedBy: currentUser,
-          deadline: deadline || null
-        })
+        body: JSON.stringify(payload)
       })
 
+      console.log('📥 [FRONTEND] Response status:', response.status)
+      
       if (!response.ok) {
-        throw new Error('Failed to create goal')
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ [FRONTEND] API error:', errorData)
+        throw new Error(errorData.error || 'Failed to create goal')
       }
 
+      const data = await response.json()
+      console.log('✅ [FRONTEND] Success!', data)
       onSuccess()
     } catch (err) {
+      console.error('❌ [FRONTEND] Caught error:', err)
       setError(err.message || 'Failed to create goal. Please try again.')
       setLoading(false)
     }
