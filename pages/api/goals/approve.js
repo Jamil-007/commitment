@@ -1,34 +1,34 @@
-import fs from 'fs'
-import path from 'path'
+import { getGoalsData, setGoals } from '../../../lib/firestore'
 
-const dataPath = path.join(process.cwd(), 'data', 'goals.json')
-
-export default function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { goalId, user } = req.body
-  const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'))
+  try {
+    const { goalId, user } = req.body
+    
+    const goals = await getGoalsData()
 
-  const goal = data.goals.find(g => g.id === goalId)
-  if (!goal) {
-    return res.status(404).json({ error: 'Goal not found' })
+    const goal = goals.find(g => g.id === goalId)
+    if (!goal) {
+      return res.status(404).json({ error: 'Goal not found' })
+    }
+
+    if (!goal.approvedBy.includes(user)) {
+      goal.approvedBy.push(user)
+    }
+
+    goal.needsApprovalFrom = goal.needsApprovalFrom.filter(u => u !== user)
+
+    if (goal.approvedBy.length === 2) {
+      goal.status = 'active'
+    }
+
+    await setGoals(goals)
+    res.status(200).json({ success: true })
+  } catch (error) {
+    console.error('Error approving goal:', error)
+    res.status(500).json({ error: error.message })
   }
-
-  // Add user to approvedBy
-  if (!goal.approvedBy.includes(user)) {
-    goal.approvedBy.push(user)
-  }
-
-  // Remove from needsApprovalFrom
-  goal.needsApprovalFrom = goal.needsApprovalFrom.filter(u => u !== user)
-
-  // If both approved, mark as active
-  if (goal.approvedBy.length === 2) {
-    goal.status = 'active'
-  }
-
-  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2))
-  res.status(200).json({ success: true })
 }

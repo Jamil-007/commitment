@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { goalId, taskId, user } = req.body
+    const { goalId, user } = req.body
     
     
     const goals = await getGoalsData()
@@ -17,31 +17,29 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Goal not found' })
     }
 
-    const task = goal.tasks.find(t => t.id === taskId)
-    if (!task) {
-      return res.status(404).json({ error: 'Task not found' })
+    // Initialize completedBy if it doesn't exist
+    if (!goal.completedBy) {
+      goal.completedBy = []
     }
 
-    if (task.completedBy.includes(user)) {
-      task.completedBy = task.completedBy.filter(u => u !== user)
+    // Toggle completion
+    if (goal.completedBy.includes(user)) {
+      goal.completedBy = goal.completedBy.filter(u => u !== user)
     } else {
-      task.completedBy.push(user)
+      goal.completedBy.push(user)
     }
 
-    const allTasksComplete = goal.tasks.every(t => 
-      t.completedBy.includes('Jamil') && t.completedBy.includes('Jerald')
-    )
-
-    if (allTasksComplete && goal.tasks.length > 0) {
+    // Check if both completed
+    if (goal.completedBy.includes('Jamil') && goal.completedBy.includes('Jerald')) {
       goal.status = 'completed'
     } else if (goal.status === 'completed') {
-      goal.status = 'active'
+      goal.status = 'active' // Uncomplete if someone undoes
     }
 
     await setGoals(goals)
     res.status(200).json({ success: true })
   } catch (error) {
-    console.error('Error toggling task:', error)
+    console.error('Error toggling goal:', error)
     res.status(500).json({ error: error.message })
   }
 }

@@ -1,12 +1,14 @@
-import fs from 'fs'
-import path from 'path'
+import { getGoalsData } from '../../../lib/firestore'
 
-const dataPath = path.join(process.cwd(), 'data', 'goals.json')
-
-export default function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'))
-    res.status(200).json(data)
+    try {
+      const goals = await getGoalsData()
+      res.status(200).json({ goals })
+    } catch (error) {
+      console.error('Error fetching goals:', error)
+      res.status(200).json({ goals: [] })
+    }
   } else {
     res.status(405).json({ error: 'Method not allowed' })
   }
