@@ -42,6 +42,6 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('❌ [CREATE] Error creating goal:', error)
     console.error('❌ [CREATE] Error stack:', error.stack)
-    res.status(500).json({ error: error.message, details: error.toString() })
+    res.status(500).json({ error: 'Failed to create goal' })
   }
 }
