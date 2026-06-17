@@ -5,6 +5,7 @@ export default function Dashboard() {
   const [currentUser, setCurrentUser] = useState(null)
   const [goals, setGoals] = useState([])
   const [showNewGoal, setShowNewGoal] = useState(false)
+  const [showCompleted, setShowCompleted] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -18,9 +19,15 @@ export default function Dashboard() {
   }, [])
 
   const loadGoals = async () => {
-    const res = await fetch('/api/goals')
+    const res = await fetch('/api/goals', {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    })
     const data = await res.json()
-    setGoals(data.goals)
+    console.log('Loaded goals:', data.goals)
+    setGoals(data.goals || [])
   }
 
   const handleLogout = () => {
@@ -39,45 +46,61 @@ export default function Dashboard() {
   if (!currentUser) return null
 
   return (
-    <div className="container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
+    <div className="container" style={{ 
+      paddingTop: '1rem', 
+      paddingBottom: '2rem',
+      paddingLeft: '1rem',
+      paddingRight: '1rem'
+    }}>
       {/* Header */}
       <div style={{
         background: 'white',
         borderRadius: '16px',
-        padding: '1.5rem',
-        marginBottom: '2rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        padding: '1rem',
+        marginBottom: '1.5rem',
         boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
       }}>
-        <div>
-          <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>
-            💪 Commitment
-          </h1>
-          <p style={{ color: '#6b7280' }}>
-            Welcome back, <strong>{currentUser}</strong>
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button
-            onClick={() => setShowNewGoal(true)}
-            style={{
-              background: '#3b82f6',
-              color: 'white'
-            }}
-          >
-            + New Goal
-          </button>
-          <button
-            onClick={handleLogout}
-            style={{
-              background: '#e5e7eb',
-              color: '#4b5563'
-            }}
-          >
-            Logout
-          </button>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem'
+        }}>
+          <div>
+            <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
+              💪 Commitment
+            </h1>
+            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+              Welcome back, <strong>{currentUser}</strong>
+            </p>
+          </div>
+          <div style={{ 
+            display: 'flex', 
+            gap: '0.5rem',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={() => setShowNewGoal(true)}
+              style={{
+                background: '#3b82f6',
+                color: 'white',
+                flex: '1 1 auto',
+                minWidth: '120px'
+              }}
+            >
+              + New Goal
+            </button>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: '#e5e7eb',
+                color: '#4b5563',
+                flex: '0 1 auto',
+                minWidth: '80px'
+              }}
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </div>
 
@@ -93,7 +116,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Pending Proposals */}
+      {/* Pending Proposals - Waiting for approval */}
       {pendingGoals.filter(g => g.needsApprovalFrom.includes(currentUser)).length > 0 && (
         <Section title="⏳ Pending Your Approval" color="#f59e0b">
           {pendingGoals
@@ -105,6 +128,37 @@ export default function Dashboard() {
                 currentUser={currentUser}
                 onUpdate={loadGoals}
               />
+            ))}
+        </Section>
+      )}
+
+      {/* Your Proposals - Waiting for others */}
+      {pendingGoals.filter(g => g.proposedBy === currentUser && g.needsApprovalFrom.length > 0).length > 0 && (
+        <Section title="📤 Your Proposals (Awaiting Approval)" color="#6b7280">
+          {pendingGoals
+            .filter(g => g.proposedBy === currentUser && g.needsApprovalFrom.length > 0)
+            .map(goal => (
+              <div key={goal.id} style={{ position: 'relative' }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '0.5rem',
+                  right: '0.5rem',
+                  background: '#f59e0b',
+                  color: 'white',
+                  padding: '0.25rem 0.5rem',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  zIndex: 1
+                }}>
+                  Pending
+                </div>
+                <GoalCard 
+                  goal={goal} 
+                  currentUser={currentUser} 
+                  onUpdate={loadGoals} 
+                />
+              </div>
             ))}
         </Section>
       )}
@@ -134,13 +188,38 @@ export default function Dashboard() {
         </Section>
       )}
 
-      {/* Completed Goals */}
+      {/* Completed Goals - Collapsible */}
       {completedGoals.length > 0 && (
-        <Section title="✅ Completed" color="#10b981">
-          {completedGoals.map(goal => (
-            <GoalCard key={goal.id} goal={goal} currentUser={currentUser} onUpdate={loadGoals} completed />
-          ))}
-        </Section>
+        <div style={{ marginBottom: '2rem' }}>
+          <div 
+            onClick={() => setShowCompleted(!showCompleted)}
+            style={{
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '1rem',
+              padding: '0.75rem',
+              background: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}
+          >
+            <span style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#10b981' }}>
+              ✅ Completed ({completedGoals.length})
+            </span>
+            <span style={{ marginLeft: 'auto', fontSize: '1.2rem' }}>
+              {showCompleted ? '▼' : '▶'}
+            </span>
+          </div>
+          {showCompleted && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {completedGoals.map(goal => (
+                <GoalCard key={goal.id} goal={goal} currentUser={currentUser} onUpdate={loadGoals} completed />
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Empty State */}
@@ -218,16 +297,20 @@ function PendingGoalCard({ goal, currentUser, onUpdate }) {
     <div style={{
       background: 'white',
       borderRadius: '12px',
-      padding: '1.5rem',
+      padding: '1rem',
       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
       border: '2px solid #f59e0b'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        gap: '0.75rem'
+      }}>
+        <div>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', wordBreak: 'break-word' }}>
             {goal.title}
           </h3>
-          <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+          <p style={{ color: '#6b7280', fontSize: '0.85rem' }}>
             Proposed by <strong>{goal.proposedBy}</strong>
           </p>
         </div>
@@ -238,7 +321,8 @@ function PendingGoalCard({ goal, currentUser, onUpdate }) {
             style={{
               background: '#10b981',
               color: 'white',
-              padding: '0.5rem 1rem'
+              padding: '0.6rem 1rem',
+              flex: 1
             }}
           >
             ✓ Approve
@@ -249,7 +333,8 @@ function PendingGoalCard({ goal, currentUser, onUpdate }) {
             style={{
               background: '#ef4444',
               color: 'white',
-              padding: '0.5rem 1rem'
+              padding: '0.6rem 1rem',
+              flex: 1
             }}
           >
             ✗ Reject
@@ -261,151 +346,192 @@ function PendingGoalCard({ goal, currentUser, onUpdate }) {
 }
 
 function GoalCard({ goal, currentUser, onUpdate, completed }) {
-  const [showAddTask, setShowAddTask] = useState(false)
-  const [newTask, setNewTask] = useState('')
+  const [isEditingDeadline, setIsEditingDeadline] = useState(false)
+  const [newDeadline, setNewDeadline] = useState(goal.deadline || '')
 
-  const handleAddTask = async (e) => {
-    e.preventDefault()
-    if (!newTask.trim()) return
-
-    await fetch('/api/goals/add-task', {
+  const handleToggleGoal = async () => {
+    await fetch('/api/goals/toggle-goal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         goalId: goal.id,
-        description: newTask
-      })
-    })
-    
-    setNewTask('')
-    setShowAddTask(false)
-    onUpdate()
-  }
-
-  const handleToggleTask = async (taskId) => {
-    await fetch('/api/goals/toggle-task', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        goalId: goal.id,
-        taskId,
         user: currentUser
       })
     })
     onUpdate()
   }
 
+  const handleUpdateDeadline = async () => {
+    await fetch('/api/goals/update-deadline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        goalId: goal.id,
+        deadline: newDeadline || null
+      })
+    })
+    setIsEditingDeadline(false)
+    onUpdate()
+  }
+
+  const jamilDone = goal.completedBy?.includes('Jamil') || false
+  const jeraldDone = goal.completedBy?.includes('Jerald') || false
+  const allDone = jamilDone && jeraldDone
+
+  // Calculate deadline status
+  let deadlineColor = '#6b7280'
+  let deadlineText = ''
+  if (goal.deadline) {
+    const deadline = new Date(goal.deadline)
+    const now = new Date()
+    const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24))
+    
+    if (daysLeft < 0) {
+      deadlineColor = '#ef4444'
+      deadlineText = `⚠️ Overdue by ${Math.abs(daysLeft)} day(s)`
+    } else if (daysLeft === 0) {
+      deadlineColor = '#f59e0b'
+      deadlineText = '⏰ Due today!'
+    } else if (daysLeft <= 3) {
+      deadlineColor = '#f59e0b'
+      deadlineText = `⏰ ${daysLeft} day(s) left`
+    } else {
+      deadlineText = `📅 Due ${deadline.toLocaleDateString()}`
+    }
+  }
+
   return (
     <div style={{
-      background: 'white',
+      background: allDone ? '#f0fdf4' : 'white',
       borderRadius: '12px',
-      padding: '1.5rem',
+      padding: '1rem',
       boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
       opacity: completed ? 0.7 : 1
     }}>
-      <h3 style={{
-        fontSize: '1.2rem',
-        marginBottom: '1rem',
-        textDecoration: completed ? 'line-through' : 'none'
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between',
+        alignItems: 'start',
+        gap: '0.75rem'
       }}>
-        {goal.title}
-      </h3>
-
-      {/* Tasks */}
-      {goal.tasks && goal.tasks.length > 0 && (
-        <div style={{ marginBottom: '1rem' }}>
-          {goal.tasks.map(task => {
-            const jamilDone = task.completedBy.includes('Jamil')
-            const jeraldDone = task.completedBy.includes('Jerald')
-            const allDone = jamilDone && jeraldDone
-
-            return (
-              <div
-                key={task.id}
-                style={{
-                  padding: '0.75rem',
-                  background: allDone ? '#f0fdf4' : '#f9fafb',
-                  borderRadius: '8px',
-                  marginBottom: '0.5rem',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  textDecoration: allDone ? 'line-through' : 'none'
-                }}
-              >
-                <span>{task.description}</span>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                    {jamilDone && '✅ Jamil'}{jamilDone && jeraldDone && ' • '}
-                    {jeraldDone && '✅ Jerald'}
-                  </span>
-                  {!allDone && (
-                    <button
-                      onClick={() => handleToggleTask(task.id)}
-                      style={{
-                        background: task.completedBy.includes(currentUser) ? '#e5e7eb' : '#3b82f6',
-                        color: task.completedBy.includes(currentUser) ? '#4b5563' : 'white',
-                        padding: '0.4rem 0.8rem',
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      {task.completedBy.includes(currentUser) ? 'Undo' : 'Done'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Add Task */}
-      {!completed && (
-        <>
-          {showAddTask ? (
-            <form onSubmit={handleAddTask} style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                type="text"
-                placeholder="New task..."
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                autoFocus
-                style={{ flex: 1 }}
-              />
-              <button
-                type="submit"
-                style={{
-                  background: '#3b82f6',
-                  color: 'white'
-                }}
-              >
-                Add
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAddTask(false)}
-                style={{
-                  background: '#e5e7eb',
-                  color: '#4b5563'
-                }}
-              >
-                Cancel
-              </button>
-            </form>
-          ) : (
-            <button
-              onClick={() => setShowAddTask(true)}
-              style={{
-                background: '#f3f4f6',
-                color: '#4b5563',
-                width: '100%',
-                padding: '0.75rem'
-              }}
-            >
-              + Add Task
-            </button>
+        <div style={{ flex: 1 }}>
+          <h3 style={{
+            fontSize: '1.1rem',
+            textDecoration: completed ? 'line-through' : 'none',
+            wordBreak: 'break-word',
+            marginBottom: (jamilDone || jeraldDone) ? '0.5rem' : 0
+          }}>
+            {goal.title}
+          </h3>
+          
+          {(jamilDone || jeraldDone) && (
+            <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+              {jamilDone && '✅ Jamil'}
+              {jamilDone && jeraldDone && ' • '}
+              {jeraldDone && '✅ Jerald'}
+            </span>
           )}
-        </>
+        </div>
+        
+        {!allDone && (
+          <button
+            onClick={handleToggleGoal}
+            style={{
+              background: goal.completedBy?.includes(currentUser) ? '#e5e7eb' : '#10b981',
+              color: goal.completedBy?.includes(currentUser) ? '#4b5563' : 'white',
+              padding: '0.5rem 0.75rem',
+              fontSize: '0.9rem',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}
+          >
+            {goal.completedBy?.includes(currentUser) ? 'Undo' : 'Done'}
+          </button>
+        )}
+      </div>
+      
+      {/* Deadline section */}
+      {!completed && (
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          gap: '0.5rem', 
+          marginTop: '0.75rem',
+          paddingTop: '0.75rem',
+          borderTop: '1px solid #e5e7eb'
+        }}>
+          {isEditingDeadline && goal.status !== 'active' ? (
+            <>
+              <input
+                type="date"
+                value={newDeadline}
+                onChange={(e) => setNewDeadline(e.target.value)}
+                style={{
+                  padding: '0.5rem',
+                  borderRadius: '6px',
+                  border: '2px solid #e5e7eb',
+                  fontSize: '0.9rem',
+                  width: '100%'
+                }}
+              />
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={handleUpdateDeadline}
+                  style={{
+                    background: '#10b981',
+                    color: 'white',
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.9rem',
+                    flex: 1
+                  }}
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEditingDeadline(false)
+                    setNewDeadline(goal.deadline || '')
+                  }}
+                  style={{
+                    background: '#e5e7eb',
+                    color: '#4b5563',
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.9rem',
+                    flex: 1
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.5rem'
+            }}>
+              <span style={{ fontSize: '0.85rem', color: deadlineColor }}>
+                {deadlineText || '📅 No deadline'}
+              </span>
+              {goal.status !== 'active' && (
+                <button
+                  onClick={() => setIsEditingDeadline(true)}
+                  style={{
+                    background: 'transparent',
+                    color: '#6b7280',
+                    padding: '0.4rem 0.75rem',
+                    fontSize: '0.85rem',
+                    border: '1px solid #d1d5db'
+                  }}
+                >
+                  {goal.deadline ? 'Edit' : 'Set deadline'}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -414,22 +540,42 @@ function GoalCard({ goal, currentUser, onUpdate, completed }) {
 function NewGoalModal({ currentUser, onClose, onSuccess }) {
   const [title, setTitle] = useState('')
   const [type, setType] = useState('short-term')
+  const [deadline, setDeadline] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!title.trim()) return
+    setError('')
+    
+    if (!title.trim()) {
+      setError('Please enter a goal title')
+      return
+    }
 
-    await fetch('/api/goals/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title,
-        type,
-        proposedBy: currentUser
+    setLoading(true)
+    
+    try {
+      const response = await fetch('/api/goals/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          type,
+          proposedBy: currentUser,
+          deadline: deadline || null
+        })
       })
-    })
 
-    onSuccess()
+      if (!response.ok) {
+        throw new Error('Failed to create goal')
+      }
+
+      onSuccess()
+    } catch (err) {
+      setError(err.message || 'Failed to create goal. Please try again.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -448,13 +594,30 @@ function NewGoalModal({ currentUser, onClose, onSuccess }) {
       <div style={{
         background: 'white',
         borderRadius: '16px',
-        padding: '2rem',
+        padding: '1.5rem',
         maxWidth: '500px',
-        width: '90%'
+        width: '90%',
+        maxHeight: '90vh',
+        overflowY: 'auto'
       }}>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>
           Propose New Goal
         </h2>
+        
+        {error && (
+          <div style={{
+            background: '#fee2e2',
+            border: '2px solid #ef4444',
+            color: '#991b1b',
+            padding: '0.75rem',
+            borderRadius: '8px',
+            marginBottom: '1rem',
+            fontSize: '0.9rem'
+          }}>
+            ⚠️ {error}
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
@@ -464,17 +627,22 @@ function NewGoalModal({ currentUser, onClose, onSuccess }) {
               type="text"
               placeholder="e.g., Launch side project"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value)
+                setError('')
+              }}
               autoFocus
+              disabled={loading}
             />
           </div>
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
               Time Frame
             </label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
+              disabled={loading}
               style={{
                 width: '100%',
                 padding: '0.75rem',
@@ -488,27 +656,50 @@ function NewGoalModal({ currentUser, onClose, onSuccess }) {
               <option value="long-term">Long-term (Months)</option>
             </select>
           </div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
+              Deadline (Optional)
+            </label>
+            <input
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                borderRadius: '8px',
+                border: '2px solid #e5e7eb',
+                fontSize: '1rem'
+              }}
+            />
+          </div>
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button
               type="button"
               onClick={onClose}
+              disabled={loading}
               style={{
                 flex: 1,
                 background: '#e5e7eb',
-                color: '#4b5563'
+                color: '#4b5563',
+                opacity: loading ? 0.6 : 1
               }}
             >
               Cancel
             </button>
             <button
               type="submit"
+              disabled={loading || !title.trim()}
               style={{
                 flex: 1,
                 background: '#3b82f6',
-                color: 'white'
+                color: 'white',
+                opacity: (loading || !title.trim()) ? 0.6 : 1,
+                cursor: (loading || !title.trim()) ? 'not-allowed' : 'pointer'
               }}
             >
-              Propose Goal
+              {loading ? 'Creating...' : 'Propose Goal'}
             </button>
           </div>
         </form>
